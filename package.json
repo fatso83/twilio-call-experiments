@@ -8,11 +8,17 @@
     "test": "npm run build && vitest run",
     "test:watch": "npm run build && vitest",
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "lint": "tsgo --noEmit && oxlint src test"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260617.1",
     "miniflare": "^4.20260616.0",
+    "oxlint": "^1.70.0",
     "vitest": "^4.1.9",
     "wrangler": "^4.101.0"
+  },
+  "dependencies": {
+    "@typescript/native-preview": "^7.0.0-dev.20260617.2"
   }
 }
