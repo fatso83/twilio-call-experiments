@@ -1,3 +1,8 @@
 name = "twilio-call-experiments"
 main = "src/index.ts"
 compatibility_date = "2026-06-17"
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+
