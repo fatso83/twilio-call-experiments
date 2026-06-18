@@ -1,5 +1,23 @@
 import { describe, expect, it, vi } from "vitest";
-import { TwilioFakeAdapter, TwilioRealAdapter } from "../src/twilio";
+import {
+  DEFAULT_TWILIO_ADAPTER,
+  resolveTwilioAdapterMode,
+  TwilioFakeAdapter,
+  TwilioRealAdapter,
+} from "../src/twilio";
+
+describe("Twilio adapter mode", () => {
+  it("defaults to fake when adapter is missing", () => {
+    expect(resolveTwilioAdapterMode(undefined)).toBe(DEFAULT_TWILIO_ADAPTER);
+    expect(resolveTwilioAdapterMode("other" as string)).toBe(
+      DEFAULT_TWILIO_ADAPTER,
+    );
+  });
+
+  it("resolves fake when explicitly configured", () => {
+    expect(resolveTwilioAdapterMode("fake")).toBe("fake");
+  });
+});
 
 describe("TwilioFakeAdapter", () => {
   it("records calls without performing network I/O", async () => {

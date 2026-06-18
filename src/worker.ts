@@ -1,6 +1,7 @@
 import {
   TwilioFakeAdapter,
   TwilioPort,
+  resolveTwilioAdapterMode,
   TwilioRealAdapter,
 } from "./twilio";
 
@@ -103,7 +104,9 @@ export async function handleRequest(
 
   try {
     logger.info("gate.open.twilio_call_create", {
-      adapter: env.TWILIO_ADAPTER ?? "real",
+      adapter: resolveTwilioAdapterMode(env.TWILIO_ADAPTER),
+      to: decision.call.to,
+      from: decision.call.from,
       toConfigured: decision.call.to.length > 0,
     });
 
@@ -126,6 +129,8 @@ export async function handleRequest(
     const message = error instanceof Error ? error.message : "unknown_error";
     logger.error("gate.open.twilio_call_failed", {
       error: message,
+      to: decision.call.to,
+      from: decision.call.from,
       stack: error instanceof Error ? error.stack : undefined,
     });
 
@@ -138,7 +143,7 @@ export async function handleRequest(
 }
 
 export function createTwilioAdapter(env: Env): TwilioPort {
-  if (env.TWILIO_ADAPTER === "fake") {
+  if (resolveTwilioAdapterMode(env.TWILIO_ADAPTER) === "fake") {
     return new TwilioFakeAdapter();
   }
 
@@ -172,7 +177,7 @@ function missingConfigNames(env: Env): string[] {
     "GATE_TARGET_NUMBER",
   ];
 
-  if (env.TWILIO_ADAPTER !== "fake") {
+  if (resolveTwilioAdapterMode(env.TWILIO_ADAPTER) !== "fake") {
     required.push("TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN");
   }
 

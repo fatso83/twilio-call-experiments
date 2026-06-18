@@ -41,7 +41,8 @@ The worker reads these from its environment.
 
 - `TWILIO_ADAPTER`
   - `fake` → no network calls, uses local fake adapter.
-  - `real` (or unset) → real Twilio API calls.
+  - `real` → real Twilio API calls.
+  - unset → defaults to `fake`.
 
 ### Call shape controls (optional)
 
