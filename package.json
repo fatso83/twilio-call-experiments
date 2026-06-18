@@ -8,6 +8,7 @@
     "test": "npm run build && vitest run",
     "test:watch": "npm run build && vitest",
     "dev": "wrangler dev",
+    "dev:debug": "wrangler dev --log-level debug",
     "deploy": "wrangler deploy",
     "lint": "tsgo --noEmit && oxlint src test"
   },

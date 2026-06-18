@@ -29,6 +29,17 @@ For Twilio integration:
 - Keep Twilio account credentials, phone numbers, and gate codes in Cloudflare Worker environment variables.
 - Fail closed when required config is missing.
 
+For local development with `wrangler dev`, use `.dev.vars`:
+
+- Keep `.env` and other shell-only files for terminal sessions only.
+- Copy `.dev.vars.example` to `.dev.vars` and set local values there.
+- Prefer `TWILIO_ADAPTER=fake` for development so no network I/O is attempted.
+
+For call shape control:
+
+- `TWILIO_CALL_TIMEOUT_SECONDS` controls how long Twilio rings before giving up (default `10`).
+- `TWILIO_CALL_TIME_LIMIT_SECONDS` controls max connected call duration in seconds (default `1`).
+
 ## Style
 
 - Prefer TypeScript and Web Platform APIs.

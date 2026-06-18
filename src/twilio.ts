@@ -2,6 +2,8 @@ export type TwilioCallRequest = {
   from: string;
   to: string;
   twiml: string;
+  timeoutSeconds?: number;
+  timeLimitSeconds?: number;
 };
 
 export type TwilioCallResult = {
@@ -29,6 +31,8 @@ export class TwilioFakeAdapter implements TwilioPort {
 export type TwilioRealAdapterConfig = {
   accountSid?: string;
   authToken?: string;
+  callTimeoutSeconds: number;
+  callTimeLimitSeconds: number;
 };
 
 type Fetch = typeof fetch;
@@ -36,7 +40,7 @@ type Fetch = typeof fetch;
 export class TwilioRealAdapter implements TwilioPort {
   constructor(
     private readonly config: TwilioRealAdapterConfig,
-    private readonly fetchImpl: Fetch = fetch,
+    private readonly fetchImpl: Fetch = globalThis.fetch.bind(globalThis),
   ) {}
 
   async createCall(call: TwilioCallRequest): Promise<TwilioCallResult> {
@@ -48,33 +52,77 @@ export class TwilioRealAdapter implements TwilioPort {
     body.set("To", call.to);
     body.set("From", call.from);
     body.set("Twiml", call.twiml);
+    body.set("Timeout", String(call.timeoutSeconds ?? this.config.callTimeoutSeconds));
+    body.set(
+      "TimeLimit",
+      String(call.timeLimitSeconds ?? this.config.callTimeLimitSeconds),
+    );
+    const payload = body.toString();
+    const credentials = `${this.config.accountSid}:${this.config.authToken}`;
+    let auth = "";
+
+    if (typeof globalThis.btoa === "function") {
+      try {
+        auth = globalThis.btoa(credentials);
+      } catch {
+        // no-op, fallback below
+      }
+    }
+
+    if (!auth && typeof btoa === "function") {
+      try {
+        auth = btoa(credentials);
+      } catch {
+        // no-op
+      }
+    }
+
+    if (!auth) {
+      throw new Error("twilio_auth_encoding_unavailable");
+    }
 
     const response = await this.fetchImpl(
       `https://api.twilio.com/2010-04-01/Accounts/${this.config.accountSid}/Calls.json`,
       {
         method: "POST",
         headers: {
-          Authorization: `Basic ${btoa(
-            `${this.config.accountSid}:${this.config.authToken}`,
-          )}`,
+          Authorization: `Basic ${auth}`,
           "Content-Type": "application/x-www-form-urlencoded",
         },
-        body,
+        body: payload,
       },
     );
 
     if (!response.ok) {
-      throw new Error("twilio_request_failed");
+      const status = response.status;
+      const statusText = response.statusText || "unknown";
+      let message = "twilio_request_failed";
+
+      try {
+        const responseText = await response.text();
+        if (responseText) {
+          message = `twilio_request_failed ${status} ${statusText}: ${responseText.slice(
+            0,
+            500,
+          )}`;
+        } else {
+          message = `twilio_request_failed ${status} ${statusText}`;
+        }
+      } catch {
+        message = `twilio_request_failed ${status} ${statusText}`;
+      }
+
+      throw new Error(message);
     }
 
-    const payload = (await response.json()) as {
+    const responsePayload = (await response.json()) as {
       sid?: string;
       status?: string;
     };
 
     return {
-      sid: payload.sid ?? "",
-      status: payload.status ?? "",
+      sid: responsePayload.sid ?? "",
+      status: responsePayload.status ?? "",
     };
   }
 }

@@ -32,6 +32,8 @@ describe("TwilioRealAdapter", () => {
       {
         accountSid: "AC00000000000000000000000000000000",
         authToken: "secret",
+        callTimeoutSeconds: 30,
+        callTimeLimitSeconds: 1,
       },
       fetch,
     );
@@ -52,9 +54,14 @@ describe("TwilioRealAdapter", () => {
       Authorization: `Basic ${btoa("AC00000000000000000000000000000000:secret")}`,
       "Content-Type": "application/x-www-form-urlencoded",
     });
-    expect(init?.body?.toString()).toBe(
-      "To=%2B15557654321&From=%2B15551234567&Twiml=%3CResponse%3E%3CHangup%2F%3E%3C%2FResponse%3E",
-    );
+    const body = init?.body;
+    expect(typeof body).toBe("string");
+    const payload = new URLSearchParams(body as string);
+    expect(payload.get("To")).toBe("+15557654321");
+    expect(payload.get("From")).toBe("+15551234567");
+    expect(payload.get("Twiml")).toBe("<Response><Hangup/></Response>");
+    expect(payload.get("Timeout")).toBe("30");
+    expect(payload.get("TimeLimit")).toBe("1");
   });
 
   it("surfaces a stable error when Twilio rejects the request", async () => {
@@ -66,6 +73,8 @@ describe("TwilioRealAdapter", () => {
       {
         accountSid: "AC00000000000000000000000000000000",
         authToken: "secret",
+        callTimeoutSeconds: 30,
+        callTimeLimitSeconds: 1,
       },
       fetch,
     );
