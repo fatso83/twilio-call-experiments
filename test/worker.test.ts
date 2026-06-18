@@ -165,7 +165,8 @@ describe("handleRequest", () => {
       {
         from: "+15551234567",
         to: "+15557654321",
-        twiml: "<Response><Hangup/></Response>",
+        twiml: "<Response><Say>Open request received</Say><Hangup/></Response>",
+        statusCallbackUrl: "https://example.com/api/twilio/status-callback",
       },
     ]);
   });
@@ -185,5 +186,73 @@ describe("handleRequest", () => {
 
     expect(response.status).toBe(200);
     expect(twilio.calls).toHaveLength(1);
+  });
+
+  it("logs twilio status callbacks with full payload and minimal fields", async () => {
+    const twilio = new TwilioFakeAdapter();
+    const logger = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    };
+
+    const response = await handleRequest(
+      new Request(
+        "https://example.com/api/twilio/status-callback",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams({
+            CallSid: "CA123",
+            CallStatus: "failed",
+            ErrorCode: "31205",
+            ErrorMessage: "Unknown",
+            SipResponseCode: "403",
+            SipResponseText: "Forbidden",
+          }),
+        },
+      ),
+      env,
+      twilio,
+      logger,
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ok: true });
+    expect(logger.info).toHaveBeenCalledWith("twilio.status_callback", {
+      payload: {
+        CallSid: "CA123",
+        CallStatus: "failed",
+        ErrorCode: "31205",
+        ErrorMessage: "Unknown",
+        SipResponseCode: "403",
+        SipResponseText: "Forbidden",
+      },
+      CallSid: "CA123",
+      CallStatus: "failed",
+      ErrorCode: "31205",
+      ErrorMessage: "Unknown",
+      SipResponseCode: "403",
+      SipResponseText: "Forbidden",
+    });
+  });
+
+  it("rejects non-POST methods on status callback", async () => {
+    const twilio = new TwilioFakeAdapter();
+    const response = await handleRequest(
+      new Request("https://example.com/api/twilio/status-callback", {
+        method: "GET",
+      }),
+      env,
+      twilio,
+    );
+
+    expect(response.status).toBe(405);
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: "method_not_allowed",
+    });
   });
 });

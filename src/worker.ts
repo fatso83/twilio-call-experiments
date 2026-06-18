@@ -36,6 +36,16 @@ const ENDPOINT_CORS_PRESET = {
   "Access-Control-Max-Age": "86400",
 };
 
+const TWILIO_STATUS_CALLBACK_PATH = "/api/twilio/status-callback";
+const TWILIO_STATUS_CALLBACK_EVENT_FIELDS = [
+  "CallSid",
+  "CallStatus",
+  "ErrorCode",
+  "ErrorMessage",
+  "SipResponseCode",
+  "SipResponseText",
+] as const;
+
 export async function handleRequest(
   request: Request,
   env: Env,
@@ -45,6 +55,10 @@ export async function handleRequest(
   const url = new URL(request.url);
   const allowedOrigin = resolveAllowedOrigin(request.headers.get("Origin"));
   const corsHeaders = createCorsHeaders(allowedOrigin);
+
+  if (url.pathname === TWILIO_STATUS_CALLBACK_PATH) {
+    return handleTwilioStatusCallback(request, logger);
+  }
 
   if (url.pathname !== "/api/gate/open") {
     return json({ ok: false, error: "not_found" }, 404, corsHeaders);
@@ -103,24 +117,32 @@ export async function handleRequest(
   }
 
   try {
+    const callbackUrl = buildStatusCallbackUrl(url);
+    const call = {
+      ...decision.call,
+      statusCallbackUrl: callbackUrl,
+    };
+
     logger.info("gate.open.twilio_call_create", {
       adapter: resolveTwilioAdapterMode(env.TWILIO_ADAPTER),
       to: decision.call.to,
       from: decision.call.from,
       toConfigured: decision.call.to.length > 0,
+      statusCallbackUrl: callbackUrl,
+      statusCallbackEnabled: callbackUrl.length > 0,
     });
 
-    const call = await twilio.createCall(decision.call);
+    const callResult = await twilio.createCall(call);
     logger.info("gate.open.twilio_call_created", {
-      callSid: call.sid,
-      status: call.status,
+      callSid: callResult.sid,
+      status: callResult.status,
     });
 
     return json(
       {
         ok: true,
-        callSid: call.sid,
-        status: call.status,
+        callSid: callResult.sid,
+        status: callResult.status,
       },
       200,
       corsHeaders,
@@ -140,6 +162,103 @@ export async function handleRequest(
       corsHeaders,
     );
   }
+}
+
+export async function handleTwilioStatusCallback(
+  request: Request,
+  logger: Logger,
+): Promise<Response> {
+  if (request.method !== "POST") {
+    return json(
+      { ok: false, error: "method_not_allowed" },
+      405,
+      {
+        Allow: "POST",
+      },
+    );
+  }
+
+  const payload = await readTwilioStatusCallbackPayload(request);
+  const eventSummary = summarizeCallbackPayload(payload);
+
+  logger.info("twilio.status_callback", {
+    payload,
+    ...eventSummary,
+  });
+
+  return json({ ok: true }, 200);
+}
+
+function summarizeCallbackPayload(
+  payload: Record<string, string>,
+): Record<string, string | undefined> {
+  const fields = {} as Record<string, string | undefined>;
+
+  for (const name of TWILIO_STATUS_CALLBACK_EVENT_FIELDS) {
+    fields[name] = payload[name];
+  }
+
+  return fields;
+}
+
+async function readTwilioStatusCallbackPayload(
+  request: Request,
+): Promise<Record<string, string>> {
+  const contentType = request.headers.get("Content-Type") ?? "";
+
+  if (contentType.includes("application/json")) {
+    try {
+      const payload = (await request.json()) as Record<string, unknown>;
+      return normalizePayloadRecord(payload);
+    } catch {
+      return {};
+    }
+  }
+
+  if (contentType.includes("application/x-www-form-urlencoded")) {
+    try {
+      const form = await request.formData();
+      const entries = Object.fromEntries(form.entries());
+      return normalizePayloadRecord(entries as Record<string, unknown>);
+    } catch {
+      return {};
+    }
+  }
+
+  try {
+    const body = await request.text();
+    if (!body) {
+      return {};
+    }
+
+    return normalizePayloadRecord(Object.fromEntries(new URLSearchParams(body)));
+  } catch {
+    return {};
+  }
+}
+
+function normalizePayloadRecord(
+  raw: Record<string, unknown>,
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (typeof value === "string") {
+      out[key] = value;
+    } else if (value instanceof File) {
+      // Ignore non-scalar fields from form parsing.
+      continue;
+    }
+  }
+
+  return out;
+}
+
+function buildStatusCallbackUrl(url: URL): string {
+  const callbackBase = new URL(url.origin);
+  callbackBase.pathname = TWILIO_STATUS_CALLBACK_PATH;
+  callbackBase.search = "";
+  callbackBase.hash = "";
+  return callbackBase.toString();
 }
 
 export function createTwilioAdapter(env: Env): TwilioPort {

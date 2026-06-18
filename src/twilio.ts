@@ -4,6 +4,7 @@ export type TwilioCallRequest = {
   twiml: string;
   timeoutSeconds?: number;
   timeLimitSeconds?: number;
+  statusCallbackUrl?: string;
 };
 
 export type TwilioCallResult = {
@@ -75,6 +76,16 @@ export class TwilioRealAdapter implements TwilioPort {
       "TimeLimit",
       String(call.timeLimitSeconds ?? this.config.callTimeLimitSeconds),
     );
+
+    if (call.statusCallbackUrl) {
+      body.set("StatusCallback", call.statusCallbackUrl);
+      body.set(
+        "StatusCallbackEvent",
+        "completed",
+      );
+      body.set("StatusCallbackMethod", "POST");
+    }
+
     const payload = body.toString();
     const credentials = `${this.config.accountSid}:${this.config.authToken}`;
     let auth = "";

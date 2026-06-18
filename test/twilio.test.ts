@@ -24,11 +24,12 @@ describe("Twilio adapter mode", () => {
 describe("TwilioFakeAdapter", () => {
   it("records calls without performing network I/O", async () => {
     const adapter = new TwilioFakeAdapter();
+    const twiml = "<Response><Say>Open request received</Say><Hangup/></Response>";
 
     const result = await adapter.createCall({
       from: "+15551234567",
       to: "+15557654321",
-      twiml: "<Response><Hangup/></Response>",
+      twiml,
     });
 
     expect(result).toEqual({ sid: "fake-call", status: "queued" });
@@ -36,7 +37,7 @@ describe("TwilioFakeAdapter", () => {
       {
         from: "+15551234567",
         to: "+15557654321",
-        twiml: "<Response><Hangup/></Response>",
+        twiml,
       },
     ]);
   });
@@ -61,7 +62,8 @@ describe("TwilioRealAdapter", () => {
     await adapter.createCall({
       from: "+15551234567",
       to: "+15557654321",
-      twiml: "<Response><Hangup/></Response>",
+      twiml: "<Response><Say>Open request received</Say><Hangup/></Response>",
+      statusCallbackUrl: "https://example.com/api/twilio/status-callback",
     });
 
     expect(fetch).toHaveBeenCalledOnce();
@@ -79,9 +81,18 @@ describe("TwilioRealAdapter", () => {
     const payload = new URLSearchParams(body as string);
     expect(payload.get("To")).toBe("+15557654321");
     expect(payload.get("From")).toBe("+15551234567");
-    expect(payload.get("Twiml")).toBe("<Response><Hangup/></Response>");
+    expect(payload.get("Twiml")).toBe(
+      "<Response><Say>Open request received</Say><Hangup/></Response>",
+    );
     expect(payload.get("Timeout")).toBe("30");
     expect(payload.get("TimeLimit")).toBe("1");
+    expect(payload.get("StatusCallback")).toBe(
+      "https://example.com/api/twilio/status-callback",
+    );
+    expect(payload.get("StatusCallbackEvent")).toBe(
+      "completed",
+    );
+    expect(payload.get("StatusCallbackMethod")).toBe("POST");
   });
 
   it("surfaces a stable error when Twilio rejects the request", async () => {
@@ -103,7 +114,7 @@ describe("TwilioRealAdapter", () => {
       adapter.createCall({
         from: "+15551234567",
         to: "+15557654321",
-        twiml: "<Response><Hangup/></Response>",
+        twiml: "<Response><Say>Open request received</Say><Hangup/></Response>",
       }),
     ).rejects.toThrow("twilio_request_failed");
   });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planGateOpen } from "../src/gate";
+import { DEBUG_TWIML, planGateOpen } from "../src/gate";
 
 const validConfig = {
   gateOpenCode: "open-sesame",
@@ -38,7 +38,7 @@ describe("planGateOpen", () => {
       call: {
         from: "+15551234567",
         to: "+15557654321",
-        twiml: "<Response><Hangup/></Response>",
+        twiml: DEBUG_TWIML,
       },
     });
   });

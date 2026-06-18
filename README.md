@@ -18,6 +18,17 @@ returns the call SID/status.
   - `401` `{ "ok": false, "error": "invalid_code" }`
   - `500` `{ "ok": false, "error": "config_missing" }`
   - `502` `{ "ok": false, "error": "twilio_call_failed" }`
+- `POST /api/twilio/status-callback`
+  - Accepts Twilio status callbacks for call lifecycle events.
+  - Returns `{ ok: true }` for successful callback ingest.
+  - Logs each callback as `twilio.status_callback`.
+  - The log contains the full decoded payload and these minimal fields:
+    - `CallSid`
+    - `CallStatus`
+    - `ErrorCode`
+    - `ErrorMessage`
+    - `SipResponseCode`
+    - `SipResponseText`
 
 ## Environment Variables
 
