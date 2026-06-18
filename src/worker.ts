@@ -46,6 +46,18 @@ const TWILIO_STATUS_CALLBACK_EVENT_FIELDS = [
   "SipResponseText",
 ] as const;
 
+const TWILIO_SIP_RESPONSE_INTERPRETATION: Record<string, string> = {
+  "403": "Call rejected by destination network (carrier policy, number filtering, or blocked caller ID)",
+  "404": "Destination not found / unavailable target endpoint",
+  "486": "Called party is busy",
+  "487": "Call cancelled or terminated during setup",
+  "488": "Not acceptable to destination endpoint",
+  "503": "Service unavailable at destination (retry later)",
+  "480": "Destination did not answer (no response)",
+  "484": "Address incomplete or invalid number format",
+  "410": "Temporary network failure or unreachable destination",
+};
+
 export async function handleRequest(
   request: Request,
   env: Env,
@@ -180,10 +192,12 @@ export async function handleTwilioStatusCallback(
 
   const payload = await readTwilioStatusCallbackPayload(request);
   const eventSummary = summarizeCallbackPayload(payload);
+  const sipSummary = summarizeSipResponse(payload);
 
   logger.info("twilio.status_callback", {
     payload,
     ...eventSummary,
+    ...sipSummary,
   });
 
   return json({ ok: true }, 200);
@@ -199,6 +213,25 @@ function summarizeCallbackPayload(
   }
 
   return fields;
+}
+
+function summarizeSipResponse(
+  payload: Record<string, string>,
+): Record<string, string | undefined> {
+  const sipResponseCode = payload.SipResponseCode;
+  const sipResponseText = payload.SipResponseText;
+
+  if (!sipResponseCode) {
+    return {};
+  }
+
+  const interpretation =
+    TWILIO_SIP_RESPONSE_INTERPRETATION[sipResponseCode] ??
+    `Unknown SIP response ${sipResponseCode}${sipResponseText ? `: ${sipResponseText}` : ""}`;
+
+  return {
+    SipResponseInterpretation: interpretation,
+  };
 }
 
 async function readTwilioStatusCallbackPayload(

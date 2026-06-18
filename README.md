@@ -29,6 +29,7 @@ returns the call SID/status.
     - `ErrorMessage`
     - `SipResponseCode`
     - `SipResponseText`
+  - It also adds `SipResponseInterpretation` with a human-readable note for known SIP codes (e.g. `403`).
 
 ## Environment Variables
 

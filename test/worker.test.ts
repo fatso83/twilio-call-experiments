@@ -221,22 +221,27 @@ describe("handleRequest", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ ok: true });
-    expect(logger.info).toHaveBeenCalledWith("twilio.status_callback", {
-      payload: {
+    expect(logger.info).toHaveBeenCalledWith(
+      "twilio.status_callback",
+      expect.objectContaining({
+        payload: {
+          CallSid: "CA123",
+          CallStatus: "failed",
+          ErrorCode: "31205",
+          ErrorMessage: "Unknown",
+          SipResponseCode: "403",
+          SipResponseText: "Forbidden",
+        },
         CallSid: "CA123",
         CallStatus: "failed",
         ErrorCode: "31205",
         ErrorMessage: "Unknown",
         SipResponseCode: "403",
         SipResponseText: "Forbidden",
-      },
-      CallSid: "CA123",
-      CallStatus: "failed",
-      ErrorCode: "31205",
-      ErrorMessage: "Unknown",
-      SipResponseCode: "403",
-      SipResponseText: "Forbidden",
-    });
+        SipResponseInterpretation:
+          "Call rejected by destination network (carrier policy, number filtering, or blocked caller ID)",
+      }),
+    );
   });
 
   it("rejects non-POST methods on status callback", async () => {
