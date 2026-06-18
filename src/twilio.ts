@@ -20,7 +20,17 @@ export type TwilioAdapterMode = "fake" | "real";
 export const DEFAULT_TWILIO_ADAPTER: TwilioAdapterMode = "fake";
 
 export function resolveTwilioAdapterMode(adapter?: string): TwilioAdapterMode {
-  return adapter === "fake" ? "fake" : DEFAULT_TWILIO_ADAPTER;
+  const normalized = adapter?.trim().toLowerCase();
+
+  if (normalized === "real") {
+    return "real";
+  }
+
+  if (normalized === "fake") {
+    return "fake";
+  }
+
+  return DEFAULT_TWILIO_ADAPTER;
 }
 
 export class TwilioFakeAdapter implements TwilioPort {

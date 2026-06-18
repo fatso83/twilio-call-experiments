@@ -9,13 +9,15 @@ import {
 describe("Twilio adapter mode", () => {
   it("defaults to fake when adapter is missing", () => {
     expect(resolveTwilioAdapterMode(undefined)).toBe(DEFAULT_TWILIO_ADAPTER);
-    expect(resolveTwilioAdapterMode("other" as string)).toBe(
-      DEFAULT_TWILIO_ADAPTER,
-    );
+    expect(resolveTwilioAdapterMode("other")).toBe(DEFAULT_TWILIO_ADAPTER);
   });
 
   it("resolves fake when explicitly configured", () => {
     expect(resolveTwilioAdapterMode("fake")).toBe("fake");
+  });
+
+  it("resolves real when explicitly configured", () => {
+    expect(resolveTwilioAdapterMode("real")).toBe("real");
   });
 });
 
