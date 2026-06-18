@@ -275,7 +275,7 @@ export function createTwilioAdapter(env: Env): TwilioPort {
     ),
     callTimeLimitSeconds: parsePositiveInt(
       env.TWILIO_CALL_TIME_LIMIT_SECONDS,
-      1,
+      15,
     ),
   });
 }

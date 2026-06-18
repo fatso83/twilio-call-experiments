@@ -59,7 +59,7 @@ The worker reads these from its environment.
 
 - `TWILIO_CALL_TIMEOUT_SECONDS` (default: `10`)
   - How long Twilio rings before giving up.
-- `TWILIO_CALL_TIME_LIMIT_SECONDS` (default: `1`)
+- `TWILIO_CALL_TIME_LIMIT_SECONDS` (default: `15`)
   - Maximum call duration in seconds.
 
 ## Local development
