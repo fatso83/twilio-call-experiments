@@ -1,5 +1,6 @@
+import { Logger, handleRequest } from "../src/worker";
 import { describe, expect, it, vi } from "vitest";
-import { handleRequest } from "../src/worker";
+
 import { TwilioFakeAdapter } from "../src/twilio";
 
 const env = {
@@ -10,6 +11,8 @@ const env = {
   GATE_TARGET_NUMBER: "+15557654321",
 };
 
+const silencedLogger: Logger = { error() {}, info() {}, warn() {} };
+
 describe("handleRequest", () => {
   it("returns 404 outside the gate endpoint", async () => {
     const twilio = new TwilioFakeAdapter();
@@ -18,6 +21,7 @@ describe("handleRequest", () => {
       new Request("https://example.com/api/other", { method: "POST" }),
       env,
       twilio,
+      silencedLogger
     );
 
     expect(response.status).toBe(404);
@@ -31,6 +35,7 @@ describe("handleRequest", () => {
       new Request("https://example.com/api/gate/open", { method: "GET" }),
       env,
       twilio,
+      silencedLogger
     );
 
     expect(response.status).toBe(405);
@@ -47,6 +52,7 @@ describe("handleRequest", () => {
       }),
       env,
       twilio,
+      silencedLogger
     );
 
     expect(response.status).toBe(204);
@@ -72,6 +78,7 @@ describe("handleRequest", () => {
       }),
       env,
       twilio,
+      silencedLogger
     );
 
     expect(response.status).toBe(200);
@@ -90,6 +97,7 @@ describe("handleRequest", () => {
       }),
       env,
       twilio,
+      silencedLogger
     );
 
     expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
@@ -106,6 +114,7 @@ describe("handleRequest", () => {
       }),
       env,
       twilio,
+      silencedLogger
     );
 
     expect(response.status).toBe(401);
@@ -153,6 +162,7 @@ describe("handleRequest", () => {
       }),
       env,
       twilio,
+      silencedLogger
     );
 
     expect(response.status).toBe(200);
@@ -165,7 +175,7 @@ describe("handleRequest", () => {
       {
         from: "+15551234567",
         to: "+15557654321",
-        twiml: "<Response><Say>Open request received</Say><Hangup/></Response>",
+        twiml: "<Response><Hangup/></Response>",
         statusCallbackUrl: "https://example.com/api/twilio/status-callback",
       },
     ]);
@@ -182,6 +192,7 @@ describe("handleRequest", () => {
       }),
       env,
       twilio,
+      silencedLogger
     );
 
     expect(response.status).toBe(200);
@@ -197,23 +208,20 @@ describe("handleRequest", () => {
     };
 
     const response = await handleRequest(
-      new Request(
-        "https://example.com/api/twilio/status-callback",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: new URLSearchParams({
-            CallSid: "CA123",
-            CallStatus: "failed",
-            ErrorCode: "31205",
-            ErrorMessage: "Unknown",
-            SipResponseCode: "403",
-            SipResponseText: "Forbidden",
-          }),
+      new Request("https://example.com/api/twilio/status-callback", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
         },
-      ),
+        body: new URLSearchParams({
+          CallSid: "CA123",
+          CallStatus: "failed",
+          ErrorCode: "31205",
+          ErrorMessage: "Unknown",
+          SipResponseCode: "403",
+          SipResponseText: "Forbidden",
+        }),
+      }),
       env,
       twilio,
       logger,
@@ -252,6 +260,7 @@ describe("handleRequest", () => {
       }),
       env,
       twilio,
+      silencedLogger
     );
 
     expect(response.status).toBe(405);
